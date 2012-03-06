@@ -18,38 +18,27 @@
 // DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
 // OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE
 // USE OR OTHER DEALINGS IN THE SOFTWARE.
-var util = require('util');
-var path = require('path');
-var assert = require('assert');
-var spawn = require('child_process').spawn;
+
 var common = require('../common');
+var assert = require('assert');
 
-console.error('argv=%j', process.argv);
-console.error('exec=%j', process.execPath);
+common.debug('load test-module-loading-error.js');
 
-if (process.argv[2] !== "child") {
-  var child = spawn('./node', [__filename, "child"], {
-    cwd: path.dirname(process.execPath)
-  });
+var error_desc = {
+  win32: '%1 is not a valid Win32 application',
+  linux: 'file too short',
+  sunos: 'unknown file type'
+};
 
-  var childArgv0 = '';
-  var childErr = '';
-  child.stdout.on('data', function(chunk) {
-    childArgv0 += chunk;
-  });
-  child.stderr.on('data', function(chunk) {
-    childErr += chunk;
-  });
-  child.on('exit', function () {
-    console.error('CHILD: %s', childErr.trim().split('\n').join('\nCHILD: '));
-    if (process.platform === 'win32') {
-      // On Windows argv[0] is not expanded into full path
-      assert.equal(childArgv0, './node');
-    } else {
-      assert.equal(childArgv0, process.execPath);
-    }
-  });
+var dlerror_msg = error_desc[process.platform];
+
+if (!dlerror_msg) {
+  console.error('Skipping test, platform not supported.');
+  process.exit();
 }
-else {
-  process.stdout.write(process.argv[0]);
+
+try {
+  require('../fixtures/module-loading-error.node');
+} catch (e) {
+  assert.notEqual(e.toString().indexOf(dlerror_msg), -1);
 }
